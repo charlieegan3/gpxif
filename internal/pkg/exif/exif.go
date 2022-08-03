@@ -1,17 +1,69 @@
 package exif
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/dsoprea/go-exif/v3"
+	exif "github.com/dsoprea/go-exif/v3"
 	exifcommon "github.com/dsoprea/go-exif/v3/common"
+	jpeg "github.com/dsoprea/go-jpeg-image-structure/v2"
 )
 
 func SetKeyString(image, key, value string) error {
+	parser := jpeg.NewJpegMediaParser()
+	intfc, err := parser.ParseFile(image)
+	if err != nil {
+		return fmt.Errorf("failed to parse %s as JPEG file: %v", image, err)
+	}
+
+	sl := intfc.(*jpeg.SegmentList)
+
+	rootIb, err := sl.ConstructExifBuilder()
+	if err != nil {
+		im, err := exifcommon.NewIfdMappingWithStandard()
+		if err != nil {
+			return fmt.Errorf("failed to create new IFD mapping from scratch: %v", err)
+		}
+		ti := exif.NewTagIndex()
+		if err := exif.LoadStandardTags(ti); err != nil {
+			return fmt.Errorf("failed to load standard tags: %v", err)
+		}
+
+		rootIb = exif.NewIfdBuilder(
+			im,
+			ti,
+			exifcommon.IfdStandardIfdIdentity,
+			exifcommon.EncodeDefaultByteOrder,
+		)
+	}
+
+	ifdPath := "IFD0"
+	ifdIb, err := exif.GetOrCreateIbFromRootIb(rootIb, ifdPath)
+	if err != nil {
+		return fmt.Errorf("failed to get or create IB: %v", err)
+	}
+
+	if err := ifdIb.SetStandardWithName(key, value); err != nil {
+		return fmt.Errorf("failed to set tag: %v", err)
+	}
+
+	if err := sl.SetExif(rootIb); err != nil {
+		return fmt.Errorf("failed to set EXIF in rootIb: %v", err)
+	}
+
+	b := new(bytes.Buffer)
+	if err := sl.Write(b); err != nil {
+		return fmt.Errorf("failed to create JPEG data: %v", err)
+	}
+
+	if err := ioutil.WriteFile(image, b.Bytes(), 0644); err != nil {
+		return fmt.Errorf("failed to write JPEG file: %v", err)
+	}
+
 	return nil
 }
 

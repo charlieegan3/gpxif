@@ -25,7 +25,7 @@ func TestSetKeyString(t *testing.T) {
 
 	for name, testCase := range testCases {
 		t.Run(name, func(t *testing.T) {
-			imageCopy, err := ioutil.TempFile(".", "imagee_")
+			imageCopy, err := ioutil.TempFile(".", "image_")
 			require.NoError(t, err)
 			defer os.Remove(imageCopy.Name())
 
