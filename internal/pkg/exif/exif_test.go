@@ -88,23 +88,23 @@ func TestGetUTC(t *testing.T) {
 	}{
 		"when iphone": {
 			Image:           "./fixtures/iphone.JPG",
-			ExpectedUTCTime: time.Date(2022, time.August, 3, 17, 56, 22, 480, time.UTC),
+			ExpectedUTCTime: time.Date(2022, time.August, 3, 17, 56, 22, 480000000, time.UTC),
 		},
 		"when iphone in another timezone": {
 			Image:           "./fixtures/iphone_other_tz.JPG",
-			ExpectedUTCTime: time.Date(2022, time.July, 30, 17, 57, 04, 349, time.UTC),
+			ExpectedUTCTime: time.Date(2022, time.July, 30, 17, 57, 04, 349000000, time.UTC),
 		},
 		"when iphone with no offset": {
 			Image:           "./fixtures/iphone_no_offset.JPG",
-			ExpectedUTCTime: time.Date(2022, time.January, 21, 9, 9, 0, 97, time.UTC),
+			ExpectedUTCTime: time.Date(2022, time.January, 21, 9, 9, 0, 97000000, time.UTC),
 		},
 		"when iphone moment DNG": {
 			Image:           "./fixtures/moment.DNG",
-			ExpectedUTCTime: time.Date(2022, time.August, 3, 17, 55, 54, 222, time.UTC),
+			ExpectedUTCTime: time.Date(2022, time.August, 3, 17, 55, 54, 222000000, time.UTC),
 		},
 		"when iphone HIEC": {
 			Image:           "./fixtures/iphone.HEIC",
-			ExpectedUTCTime: time.Date(2022, time.August, 3, 17, 57, 45, 986, time.UTC),
+			ExpectedUTCTime: time.Date(2022, time.August, 3, 17, 57, 45, 986000000, time.UTC),
 		},
 		"when x100f jpg with no offset": {
 			Image:           "./fixtures/x100f.jpg",

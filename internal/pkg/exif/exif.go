@@ -219,7 +219,7 @@ func GetUTC(image string) (time.Time, error) {
 		dateTimeOriginal.Hour(),
 		dateTimeOriginal.Minute(),
 		dateTimeOriginal.Second(),
-		dateTimeOriginalSubSec,
+		dateTimeOriginalSubSec*1000000,
 		offset.Location(),
 	).UTC(), nil
 }
