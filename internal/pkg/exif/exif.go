@@ -1,67 +1,115 @@
 package exif
 
 import (
-	"bytes"
+	"encoding/binary"
 	"fmt"
+	jpegstructure "github.com/dsoprea/go-jpeg-image-structure/v2"
 	"io/ioutil"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 
 	exif "github.com/dsoprea/go-exif/v3"
 	exifcommon "github.com/dsoprea/go-exif/v3/common"
-	jpeg "github.com/dsoprea/go-jpeg-image-structure/v2"
 )
 
-func SetKeyString(image, key, value string) error {
-	parser := jpeg.NewJpegMediaParser()
-	intfc, err := parser.ParseFile(image)
-	if err != nil {
-		return fmt.Errorf("failed to parse %s as JPEG file: %v", image, err)
+// getIndexedTagFromName looks up tag index values to use for supplied tags. When we have a new tag that's not in the
+// current file, then we need to look up where it should go in the EXIF tree
+func getIndexedTagFromName(k string) (*exifcommon.IfdIdentity, *exif.IndexedTag, error) {
+	tag_paths := []*exifcommon.IfdIdentity{
+		exifcommon.IfdStandardIfdIdentity,
+		exifcommon.IfdExifStandardIfdIdentity,
+		exifcommon.IfdExifIopStandardIfdIdentity,
+		exifcommon.IfdGpsInfoStandardIfdIdentity,
+		exifcommon.Ifd1StandardIfdIdentity,
+	}
+	ti := exif.NewTagIndex()
+
+	for _, id := range tag_paths {
+		t, err := ti.GetWithName(id, k)
+
+		if err != nil {
+			continue
+		}
+
+		return id, t, nil
 	}
 
-	sl := intfc.(*jpeg.SegmentList)
+	return nil, nil, fmt.Errorf("unrecognized tag, %s", k)
+}
+
+func SetKeyString(image, key, value string) error {
+	jmp := jpegstructure.NewJpegMediaParser()
+
+	intfc, err := jmp.ParseFile(image)
+	if err != nil {
+		return fmt.Errorf("failed to parse image: %s", err)
+	}
+
+	sl := intfc.(*jpegstructure.SegmentList)
 
 	rootIb, err := sl.ConstructExifBuilder()
 	if err != nil {
-		im, err := exifcommon.NewIfdMappingWithStandard()
-		if err != nil {
-			return fmt.Errorf("failed to create new IFD mapping from scratch: %v", err)
-		}
-		ti := exif.NewTagIndex()
-		if err := exif.LoadStandardTags(ti); err != nil {
-			return fmt.Errorf("failed to load standard tags: %v", err)
-		}
-
-		rootIb = exif.NewIfdBuilder(
-			im,
-			ti,
-			exifcommon.IfdStandardIfdIdentity,
-			exifcommon.EncodeDefaultByteOrder,
-		)
+		return fmt.Errorf("failed to construct exif builder: %s", err)
 	}
 
-	ifdPath := "IFD0"
-	ifdIb, err := exif.GetOrCreateIbFromRootIb(rootIb, ifdPath)
+	ifdPath := "IFD/Exif"
+
+	childIb, err := exif.GetOrCreateIbFromRootIb(rootIb, ifdPath)
 	if err != nil {
-		return fmt.Errorf("failed to get or create IB: %v", err)
+		return fmt.Errorf("failed to get child ifd builder: %s", err)
 	}
 
-	if err := ifdIb.SetStandardWithName(key, value); err != nil {
-		return fmt.Errorf("failed to set tag: %v", err)
+	_, it, err := getIndexedTagFromName(key)
+	if err != nil {
+		return fmt.Errorf("failed to lookup indexed tag from name: %s", err)
 	}
 
-	if err := sl.SetExif(rootIb); err != nil {
-		return fmt.Errorf("failed to set EXIF in rootIb: %v", err)
+	childIb.Set(exif.NewBuilderTag(
+		ifdPath,
+		it.Id,
+		// TODO we can only set ascii values
+		exifcommon.TypeAscii,
+		exif.NewIfdBuilderTagValueFromBytes([]byte(value)),
+		binary.BigEndian,
+	))
+
+	fmt.Println(image, key, value)
+	childIb.PrintTagTree()
+
+	err = sl.SetExif(rootIb)
+	if err != nil {
+		return fmt.Errorf("failed to set exif data: %s", err)
 	}
 
-	b := new(bytes.Buffer)
-	if err := sl.Write(b); err != nil {
-		return fmt.Errorf("failed to create JPEG data: %v", err)
+	f, err := os.Create(image)
+	if err != nil {
+		return fmt.Errorf("failed to get file handle for image: %s", err)
 	}
+	defer f.Close()
 
-	if err := ioutil.WriteFile(image, b.Bytes(), 0644); err != nil {
-		return fmt.Errorf("failed to write JPEG file: %v", err)
+	err = sl.Write(f)
+
+	return err
+}
+
+func SetLocalTime(image string, localTime time.Time) error {
+	dateTime := localTime.Format("2006-01-02 15:04:05")
+	offset := localTime.Format("-07:00")
+	subSec := localTime.Format("200")
+
+	err := SetKeyString(image, "DateTimeOriginal", dateTime)
+	if err != nil {
+		return fmt.Errorf("failed to set DateTimeOriginal: %v", err)
+	}
+	err = SetKeyString(image, "SubSecTimeOriginal", subSec)
+	if err != nil {
+		return fmt.Errorf("failed to set SubSecTimeOriginal: %v", err)
+	}
+	err = SetKeyString(image, "OffsetTimeOriginal", offset)
+	if err != nil {
+		return fmt.Errorf("failed to set OffsetTimeOriginal: %v", err)
 	}
 
 	return nil

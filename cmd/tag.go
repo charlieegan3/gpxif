@@ -9,9 +9,11 @@ import (
 	"github.com/charlieegan3/gpxif/internal/pkg/exif"
 	"github.com/charlieegan3/gpxif/internal/pkg/gpx"
 	"github.com/spf13/cobra"
+	"github.com/zsefvlol/timezonemapper"
 	"io/ioutil"
 	"log"
 	"strings"
+	"time"
 )
 
 // tagCmd represents the tag command
@@ -52,18 +54,40 @@ var tagCmd = &cobra.Command{
 		for _, f := range files {
 			fmt.Println("Processing", f.Name())
 
+			// get the utc time for the image, if the image has an offset then this is used to calculate the utc time
+			// if no offset is set, then the time is assumed to be UTC
 			utcTime, err := exif.GetUTC(imageSource + "/" + f.Name())
 			if err != nil {
 				log.Fatalf("Failed to get UTC time for image: %s", err)
 			}
-
 			fmt.Println(utcTime)
+
+			// find the nearest point from the GPX track for that UTC time
 			p, err := g.AtTime(utcTime)
 			if err != nil {
 				log.Fatalf("Failed to get point for time: %s", err)
 			}
 			fmt.Println(p.Latitude, p.Longitude)
+
+			// calculate the local time for the image from the UTC time and the GPS location
+			location, err := time.LoadLocation(timezonemapper.LatLngToTimezoneString(p.Latitude, p.Longitude))
+			if err != nil {
+				log.Fatalf("Failed to parse location from GPS point: %s", err)
+			}
+			local := utcTime
+			local = local.In(location)
+
+			// check that the DateTimeOriginal and Offset are set to show local time
+			//expectedDateTime := local.Format("2006-01-02 15:04:05")
+			//expectedOffset := local.Format("-0700")
+			//
+			//currentDateTime, err := exif.GetKeyString(imageSource+"/"+f.Name(), "DateTimeOriginal")
+			//currentDateTimeOffset, err := exif.GetKeyString(imageSource+"/"+f.Name(), "DateTimeOriginal")
+
+			fmt.Println("")
 		}
+
+		// TODO: function to calc abs diff in duration between two times to handle diff limit
 	},
 }
 
