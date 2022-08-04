@@ -1,6 +1,7 @@
 package exif
 
 import (
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -16,11 +17,11 @@ func TestSetKeyString(t *testing.T) {
 		Key   string
 		Value string
 	}{
-		//"set DateTimeOriginal": {
-		//	Image: "./fixtures/iphone.JPG",
-		//	Key:   "DateTimeOriginal",
-		//	Value: "2022:08:03 17:56:22",
-		//},
+		"set DateTimeOriginal": {
+			Image: "./fixtures/iphone.JPG",
+			Key:   "DateTimeOriginal",
+			Value: "2022:08:03 17:56:22",
+		},
 		"set OffsetTimeOriginal when missing in original": {
 			Image: "./fixtures/x100f.jpg",
 			Key:   "OffsetTimeOriginal",
@@ -40,12 +41,13 @@ func TestSetKeyString(t *testing.T) {
 			_, err = io.Copy(imageCopy, imageFile)
 			require.NoError(t, err)
 
+			// test that we can mutate the same file again
 			count := 0
 			for {
 				if count > 1 {
-
 					break
 				}
+				count++
 
 				err = SetKeyString(imageCopy.Name(), testCase.Key, testCase.Value)
 				require.NoError(t, err)
@@ -60,7 +62,7 @@ func TestSetKeyString(t *testing.T) {
 	}
 }
 
-func TTestSetLocalTime(t *testing.T) {
+func TestSetLocalTime(t *testing.T) {
 	location, err := time.LoadLocation("Europe/London")
 	require.NoError(t, err)
 
@@ -72,7 +74,7 @@ func TTestSetLocalTime(t *testing.T) {
 		"set DateTimeOriginal to local time": {
 			Image:     "./fixtures/x100f.jpg",
 			Key:       "DateTimeOriginal",
-			LocalTime: time.Date(2022, time.July, 31, 20, 13, 21, 0, location),
+			LocalTime: time.Date(2022, time.July, 31, 20, 13, 21, 500000000, location),
 		},
 	}
 
@@ -102,7 +104,7 @@ func TTestSetLocalTime(t *testing.T) {
 
 			assert.Equal(t, testCase.LocalTime.Format("2006-01-02 15:04:05"), newDateTime)
 			assert.Equal(t, testCase.LocalTime.Format("-07:00"), newOffset)
-			assert.Equal(t, testCase.LocalTime.Format(".000"), newSubSecTime)
+			assert.Equal(t, fmt.Sprintf("%d", testCase.LocalTime.Nanosecond()/1000000), newSubSecTime)
 		})
 		continue
 	}
@@ -142,7 +144,7 @@ func TestGetKeyString(t *testing.T) {
 	}
 }
 
-func TTestGetUTC(t *testing.T) {
+func TestGetUTC(t *testing.T) {
 	testCases := map[string]struct {
 		Image           string
 		ExpectedUTCTime time.Time

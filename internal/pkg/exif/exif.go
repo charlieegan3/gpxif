@@ -39,6 +39,8 @@ func getIndexedTagFromName(k string) (*exifcommon.IfdIdentity, *exif.IndexedTag,
 	return nil, nil, fmt.Errorf("unrecognized tag, %s", k)
 }
 
+// SetKeyString sets an exif value, it will also remove values which go-exif adjusts erroneously :( but are not needed
+// by me
 func SetKeyString(image, key, value string) error {
 	jmp := jpegstructure.NewJpegMediaParser()
 
@@ -50,13 +52,22 @@ func SetKeyString(image, key, value string) error {
 	sl := intfc.(*jpegstructure.SegmentList)
 
 	rootIb, err := sl.ConstructExifBuilder()
-	if err != nil {
+	if err != nil && err.Error() != "EOF" {
 		return fmt.Errorf("failed to construct exif builder: %s", err)
 	}
 
-	ifdPath := "IFD/Exif"
-
+	// strip the thumbnail since it gets messed with by go-exif
+	ifdPath := "IFD1"
 	childIb, err := exif.GetOrCreateIbFromRootIb(rootIb, ifdPath)
+	if err != nil {
+		return fmt.Errorf("failed to get child ifd builder: %s", err)
+	}
+	childIb.DeleteAll(0x0201)
+	childIb.DeleteAll(0x0202)
+
+	// set the value we want to set
+	ifdPath = "IFD/Exif"
+	childIb, err = exif.GetOrCreateIbFromRootIb(rootIb, ifdPath)
 	if err != nil {
 		return fmt.Errorf("failed to get child ifd builder: %s", err)
 	}
@@ -66,7 +77,7 @@ func SetKeyString(image, key, value string) error {
 		return fmt.Errorf("failed to lookup indexed tag from name: %s", err)
 	}
 
-	childIb.Set(exif.NewBuilderTag(
+	err = childIb.Set(exif.NewBuilderTag(
 		ifdPath,
 		it.Id,
 		// TODO we can only set ascii values
@@ -75,9 +86,14 @@ func SetKeyString(image, key, value string) error {
 		binary.BigEndian,
 	))
 
-	fmt.Println(image, key, value)
-	childIb.PrintTagTree()
+	// drop the scene type and file source since the generated data is invalid
+	if err != nil {
+		return fmt.Errorf("failed to set value: %s", err)
+	}
+	childIb.DeleteAll(0xa301)
+	childIb.DeleteAll(0xa300)
 
+	// write the data back to the file
 	err = sl.SetExif(rootIb)
 	if err != nil {
 		return fmt.Errorf("failed to set exif data: %s", err)
@@ -97,7 +113,9 @@ func SetKeyString(image, key, value string) error {
 func SetLocalTime(image string, localTime time.Time) error {
 	dateTime := localTime.Format("2006-01-02 15:04:05")
 	offset := localTime.Format("-07:00")
-	subSec := localTime.Format("200")
+
+	// TODO I think this value is meant to be in milliseconds
+	subSec := fmt.Sprintf("%d", localTime.Nanosecond()/1000000)
 
 	err := SetKeyString(image, "DateTimeOriginal", dateTime)
 	if err != nil {
