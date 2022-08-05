@@ -40,6 +40,7 @@ var tagCmd = &cobra.Command{
 		fmt.Println("Dry Run: ", dryRun)
 		fmt.Println("Image Source: ", imageSource)
 		fmt.Println("GPX Source: ", gpxSource)
+		fmt.Println("---")
 
 		files, err := ioutil.ReadDir(imageSource)
 		if err != nil {
@@ -54,9 +55,11 @@ var tagCmd = &cobra.Command{
 		for _, f := range files {
 			fmt.Println("Processing", f.Name())
 
+			imageFileName := imageSource + "/" + f.Name()
+
 			// get the utc time for the image, if the image has an offset then this is used to calculate the utc time
 			// if no offset is set, then the time is assumed to be UTC
-			utcTime, err := exif.GetUTC(imageSource + "/" + f.Name())
+			utcTime, err := exif.GetUTC(imageFileName)
 			if err != nil {
 				log.Fatalf("Failed to get UTC time for image: %s", err)
 			}
@@ -78,11 +81,26 @@ var tagCmd = &cobra.Command{
 			local = local.In(location)
 
 			// check that the DateTimeOriginal and Offset are set to show local time
-			//expectedDateTime := local.Format("2006-01-02 15:04:05")
-			//expectedOffset := local.Format("-0700")
-			//
-			//currentDateTime, err := exif.GetKeyString(imageSource+"/"+f.Name(), "DateTimeOriginal")
-			//currentDateTimeOffset, err := exif.GetKeyString(imageSource+"/"+f.Name(), "DateTimeOriginal")
+			expectedDateTime := local.Format("2006-01-02 15:04:05")
+			expectedOffset := local.Format("-07:00")
+			expectedSubSec := fmt.Sprintf("%d", local.Nanosecond()/1000000)
+
+			currentDateTime, err := exif.GetKeyString(imageFileName, "DateTimeOriginal")
+			if err != nil {
+				log.Fatalf("failed to get DateTimeOriginal: %v", err)
+			}
+			currentSubSecTime, err := exif.GetKeyString(imageFileName, "SubSecTimeOriginal")
+			if err != nil {
+				log.Fatalf("failed to get SubSecTimeOriginal: %v", err)
+			}
+			currentOffset, err := exif.GetKeyString(imageFileName, "OffsetTimeOriginal")
+			if err != nil {
+				log.Fatalf("failed to get OffsetTimeOriginal: %v", err)
+			}
+
+			fmt.Println("DateTimeOriginal:", currentDateTime, "->", expectedDateTime)
+			fmt.Println("SubSecTimeOriginal:", currentSubSecTime, "->", expectedSubSec)
+			fmt.Println("OffsetTimeOriginal:", currentOffset, "->", expectedOffset)
 
 			fmt.Println("")
 		}
