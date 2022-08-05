@@ -1,7 +1,3 @@
-/*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-
-*/
 package cmd
 
 import (
@@ -68,7 +64,8 @@ var tagCmd = &cobra.Command{
 			// find the nearest point from the GPX track for that UTC time
 			p, err := g.AtTime(utcTime)
 			if err != nil {
-				log.Fatalf("Failed to get point for time: %s", err)
+				log.Printf("Failed to get point for time: %s\n\n", err)
+				continue
 			}
 			fmt.Println(p.Latitude, p.Longitude)
 
@@ -139,7 +136,7 @@ func init() {
 	if err != nil {
 		log.Fatalf("Failed to mark images flag required: %s", err)
 	}
-	tagCmd.MarkFlagRequired("gpx")
+	err = tagCmd.MarkFlagRequired("gpx")
 	if err != nil {
 		log.Fatalf("Failed to mark gpx flag required: %s", err)
 	}

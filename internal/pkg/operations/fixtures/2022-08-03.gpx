@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx xmlns="http://www.topografix.com/GPX/1/0" version="1.0" creator="photos.charlieegan3.com">
+	<trk>
+		<name>2022-08-03 to 2022-08-03</name>
+		<trkseg>
+			<trkpt lat="51.56734" lon="-0.13843">
+				<ele>75</ele>
+				<time>2022-08-03T01:18:07Z</time>
+				<Speed></Speed>
+			</trkpt>
+			<trkpt lat="51.56734" lon="-0.13843">
+				<ele>75</ele>
+				<time>2022-08-03T23:18:07Z</time>
+				<Speed></Speed>
+			</trkpt>
+		</trkseg>
+	</trk>
+</gpx>
