@@ -2,14 +2,13 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/charlieegan3/gpxif/internal/pkg/exif"
-	"github.com/charlieegan3/gpxif/internal/pkg/gpx"
 	"github.com/spf13/cobra"
-	"github.com/zsefvlol/timezonemapper"
 	"io/ioutil"
 	"log"
 	"strings"
-	"time"
+
+	"github.com/charlieegan3/gpxif/internal/pkg/gpx"
+	"github.com/charlieegan3/gpxif/internal/pkg/operations"
 )
 
 // tagCmd represents the tag command
@@ -49,60 +48,31 @@ var tagCmd = &cobra.Command{
 		}
 
 		for _, f := range files {
-			fmt.Println("Processing", f.Name())
+			var ops []operations.Operation
 
-			imageFileName := imageSource + "/" + f.Name()
-
-			// get the utc time for the image, if the image has an offset then this is used to calculate the utc time
-			// if no offset is set, then the time is assumed to be UTC
-			utcTime, err := exif.GetUTC(imageFileName)
+			gpsOperations, err := operations.CheckGPSData(imageSource+"/"+f.Name(), g)
 			if err != nil {
-				log.Fatalf("Failed to get UTC time for image: %s", err)
+				log.Fatalf("failed to determine GPS operations for %s: %s", f.Name(), err)
 			}
-			fmt.Println(utcTime)
+			ops = append(ops, gpsOperations...)
 
-			// find the nearest point from the GPX track for that UTC time
-			p, err := g.AtTime(utcTime)
+			timeOperations, err := operations.CheckLocalTime(imageSource+"/"+f.Name(), g)
 			if err != nil {
-				log.Printf("Failed to get point for time: %s\n\n", err)
+				log.Fatalf("failed to determine GPS operations for %s: %s", f.Name(), err)
+			}
+
+			ops = append(ops, timeOperations...)
+
+			if len(ops) == 0 {
 				continue
 			}
-			fmt.Println(p.Latitude, p.Longitude)
 
-			// calculate the local time for the image from the UTC time and the GPS location
-			location, err := time.LoadLocation(timezonemapper.LatLngToTimezoneString(p.Latitude, p.Longitude))
-			if err != nil {
-				log.Fatalf("Failed to parse location from GPS point: %s", err)
+			fmt.Println("Updates to ", f.Name())
+
+			for _, op := range ops {
+				fmt.Println("  ", op.Reason)
 			}
-			local := utcTime
-			local = local.In(location)
-
-			// check that the DateTimeOriginal and Offset are set to show local time
-			expectedDateTime := local.Format("2006-01-02 15:04:05")
-			expectedOffset := local.Format("-07:00")
-			expectedSubSec := fmt.Sprintf("%d", local.Nanosecond()/1000000)
-
-			currentDateTime, err := exif.GetKey(imageFileName, "IFD/Exif", "DateTimeOriginal")
-			if err != nil {
-				log.Fatalf("failed to get DateTimeOriginal: %v", err)
-			}
-			currentSubSecTime, err := exif.GetKey(imageFileName, "IFD/Exif", "SubSecTimeOriginal")
-			if err != nil {
-				log.Fatalf("failed to get SubSecTimeOriginal: %v", err)
-			}
-			currentOffset, err := exif.GetKey(imageFileName, "IFD/Exif", "OffsetTimeOriginal")
-			if err != nil {
-				log.Fatalf("failed to get OffsetTimeOriginal: %v", err)
-			}
-
-			fmt.Println("DateTimeOriginal:", currentDateTime, "->", expectedDateTime)
-			fmt.Println("SubSecTimeOriginal:", currentSubSecTime, "->", expectedSubSec)
-			fmt.Println("OffsetTimeOriginal:", currentOffset, "->", expectedOffset)
-
-			fmt.Println("")
 		}
-
-		// TODO: function to calc abs diff in duration between two times to handle diff limit
 	},
 }
 
