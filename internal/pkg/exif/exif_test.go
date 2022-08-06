@@ -2,6 +2,7 @@ package exif
 
 import (
 	"fmt"
+	exifcommon "github.com/dsoprea/go-exif/v3/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -52,13 +53,63 @@ func TestSetKeyString(t *testing.T) {
 				err = SetKeyString(imageCopy.Name(), testCase.Key, testCase.Value)
 				require.NoError(t, err)
 
-				readValue, err := GetKeyString(imageCopy.Name(), testCase.Key)
+				readValue, err := GetKeyASCII(imageCopy.Name(), testCase.Key)
 				require.NoError(t, err)
 
 				assert.Equal(t, testCase.Value, readValue)
 			}
 		})
-		continue
+	}
+}
+
+func TestSetKeyRational(t *testing.T) {
+	testCases := map[string]struct {
+		Image string
+		Key   string
+		Value []exifcommon.Rational
+	}{
+		"set GPSLatitude": {
+			Image: "./fixtures/iphone.JPG",
+			Key:   "GPSLatitude",
+			Value: RationalFromDecimal(51.56736389),
+		},
+		//"set GPSLatitude when missing in original": {
+		//	Image: "./fixtures/x100f.jpg",
+		//	Key:   "GPSLatitude",
+		//	Value: RationalFromDecimal(51.56736389),
+		//},
+	}
+
+	for name, testCase := range testCases {
+		t.Run(name, func(t *testing.T) {
+			imageCopy, err := ioutil.TempFile(".", "image_")
+			require.NoError(t, err)
+			defer os.Remove(imageCopy.Name())
+
+			imageFile, err := os.Open(testCase.Image)
+			require.NoError(t, err)
+
+			_, err = io.Copy(imageCopy, imageFile)
+			require.NoError(t, err)
+
+			// test that we can mutate the same file again
+			count := 0
+			for {
+				if count > 1 {
+					break
+				}
+				count++
+				fmt.Println(count)
+
+				err = SetKeyRational(imageCopy.Name(), "IFD/GPSInfo", testCase.Key, testCase.Value)
+				require.NoError(t, err)
+
+				readValue, err := GetKeyRational(imageCopy.Name(), testCase.Key)
+				require.NoError(t, err)
+
+				assert.Equal(t, testCase.Value, readValue)
+			}
+		})
 	}
 }
 
@@ -95,22 +146,21 @@ func TestSetLocalTime(t *testing.T) {
 			err = SetLocalTime(imageCopy.Name(), testCase.LocalTime)
 			require.NoError(t, err)
 
-			newDateTime, err := GetKeyString(imageCopy.Name(), "DateTimeOriginal")
+			newDateTime, err := GetKeyASCII(imageCopy.Name(), "DateTimeOriginal")
 			require.NoError(t, err)
-			newOffset, err := GetKeyString(imageCopy.Name(), "OffsetTimeOriginal")
+			newOffset, err := GetKeyASCII(imageCopy.Name(), "OffsetTimeOriginal")
 			require.NoError(t, err)
-			newSubSecTime, err := GetKeyString(imageCopy.Name(), "SubSecTimeOriginal")
+			newSubSecTime, err := GetKeyASCII(imageCopy.Name(), "SubSecTimeOriginal")
 			require.NoError(t, err)
 
 			assert.Equal(t, testCase.LocalTime.Format("2006-01-02 15:04:05"), newDateTime)
 			assert.Equal(t, testCase.LocalTime.Format("-07:00"), newOffset)
 			assert.Equal(t, fmt.Sprintf("%d", testCase.LocalTime.Nanosecond()/1000000), newSubSecTime)
 		})
-		continue
 	}
 }
 
-func TestGetKeyString(t *testing.T) {
+func TestGetKeyASCII(t *testing.T) {
 	testCases := map[string]struct {
 		Image         string
 		Key           string
@@ -135,12 +185,68 @@ func TestGetKeyString(t *testing.T) {
 
 	for name, testCase := range testCases {
 		t.Run(name, func(t *testing.T) {
-			value, err := GetKeyString(testCase.Image, testCase.Key)
+			value, err := GetKeyASCII(testCase.Image, testCase.Key)
 			require.NoError(t, err)
 
 			assert.Equal(t, testCase.ExpectedValue, value)
 		})
-		continue
+	}
+}
+
+func TestGetKeyRational(t *testing.T) {
+	testCases := map[string]struct {
+		Image         string
+		Key           string
+		ExpectedValue []exifcommon.Rational
+	}{
+		"get GPSLatitude": {
+			Image: "./fixtures/iphone.JPG",
+			Key:   "GPSLatitude",
+			ExpectedValue: []exifcommon.Rational{
+				{51, 1},
+				{34, 1},
+				{251, 100},
+			},
+		},
+	}
+
+	for name, testCase := range testCases {
+		t.Run(name, func(t *testing.T) {
+			value, err := GetKeyRational(testCase.Image, testCase.Key)
+			require.NoError(t, err)
+
+			assert.Equal(t, testCase.ExpectedValue, value)
+		})
+	}
+}
+
+func TestRationalFromDecimal(t *testing.T) {
+	testCases := map[string]struct {
+		Decimal       float64
+		ExpectedValue []exifcommon.Rational
+	}{
+		"example 1": {
+			Decimal: 53.383328,
+			ExpectedValue: []exifcommon.Rational{
+				{53, 1},
+				{22, 1},
+				{5998, 100},
+			},
+		},
+		"example 2": {
+			Decimal: 75.1234,
+			ExpectedValue: []exifcommon.Rational{
+				{75, 1},
+				{7, 1},
+				{2424, 100},
+			},
+		},
+	}
+
+	for name, testCase := range testCases {
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, testCase.ExpectedValue, RationalFromDecimal(testCase.Decimal))
+		})
 	}
 }
 
@@ -182,6 +288,5 @@ func TestGetUTC(t *testing.T) {
 
 			assert.Equal(t, testCase.ExpectedUTCTime, time)
 		})
-		continue
 	}
 }

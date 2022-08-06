@@ -1,10 +1,10 @@
 package exif
 
 import (
-	"encoding/binary"
 	"fmt"
 	jpegstructure "github.com/dsoprea/go-jpeg-image-structure/v2"
 	"io/ioutil"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -52,8 +52,13 @@ func SetKeyString(image, key, value string) error {
 	sl := intfc.(*jpegstructure.SegmentList)
 
 	rootIb, err := sl.ConstructExifBuilder()
-	if err != nil && err.Error() != "EOF" {
+	if err != nil {
 		return fmt.Errorf("failed to construct exif builder: %s", err)
+	}
+
+	rootIfd, _, err := intfc.Exif()
+	if err != nil {
+		return fmt.Errorf("failed to get root ifd: %s", err)
 	}
 
 	// strip the thumbnail since it gets messed with by go-exif
@@ -77,13 +82,18 @@ func SetKeyString(image, key, value string) error {
 		return fmt.Errorf("failed to lookup indexed tag from name: %s", err)
 	}
 
+	enc := exifcommon.NewValueEncoder(rootIfd.ByteOrder())
+	data, err := enc.Encode(value)
+	if err != nil {
+		return fmt.Errorf("failed to encode value: %s", err)
+	}
+
 	err = childIb.Set(exif.NewBuilderTag(
 		ifdPath,
 		it.Id,
-		// TODO we can only set ascii values
 		exifcommon.TypeAscii,
-		exif.NewIfdBuilderTagValueFromBytes([]byte(value)),
-		binary.BigEndian,
+		exif.NewIfdBuilderTagValueFromBytes(data.Encoded),
+		rootIfd.ByteOrder(),
 	))
 
 	// drop the scene type and file source since the generated data is invalid
@@ -92,6 +102,81 @@ func SetKeyString(image, key, value string) error {
 	}
 	childIb.DeleteAll(0xa301)
 	childIb.DeleteAll(0xa300)
+
+	// write the data back to the file
+	err = sl.SetExif(rootIb)
+	if err != nil {
+		return fmt.Errorf("failed to set exif data: %s", err)
+	}
+
+	f, err := os.Create(image)
+	if err != nil {
+		return fmt.Errorf("failed to get file handle for image: %s", err)
+	}
+	defer f.Close()
+
+	err = sl.Write(f)
+
+	return err
+}
+
+// SetKeyRational sets an exif rational value, TODO make this share more with SetKeyString
+func SetKeyRational(image, targetIFDPath, key string, value []exifcommon.Rational) error {
+	jmp := jpegstructure.NewJpegMediaParser()
+
+	intfc, err := jmp.ParseFile(image)
+	if err != nil {
+		return fmt.Errorf("failed to parse image: %s", err)
+	}
+
+	rootIfd, _, err := intfc.Exif()
+	if err != nil {
+		return fmt.Errorf("failed to get root ifd: %s", err)
+	}
+
+	sl := intfc.(*jpegstructure.SegmentList)
+
+	rootIb, err := sl.ConstructExifBuilder()
+	if err != nil {
+		return fmt.Errorf("failed to construct exif builder: %s", err)
+	}
+
+	// yeet these invalid values as we do for string keys
+	ifdPath := "IFD/Exif"
+	childIb, err := exif.GetOrCreateIbFromRootIb(rootIb, ifdPath)
+	if err != nil {
+		return fmt.Errorf("failed to get child ifd builder for %s: %s", ifdPath, err)
+	}
+	childIb.DeleteAll(0xa301)
+	childIb.DeleteAll(0xa300)
+
+	// set the value we want to set
+	childIb, err = exif.GetOrCreateIbFromRootIb(rootIb, targetIFDPath)
+	if err != nil {
+		return fmt.Errorf("failed to get child ifd builder for %s: %s", targetIFDPath, err)
+	}
+
+	_, it, err := getIndexedTagFromName(key)
+	if err != nil {
+		return fmt.Errorf("failed to lookup indexed tag from name: %s", err)
+	}
+
+	enc := exifcommon.NewValueEncoder(rootIfd.ByteOrder())
+	data, err := enc.Encode(value)
+	if err != nil {
+		return fmt.Errorf("failed to encode value: %s", err)
+	}
+
+	err = childIb.Set(exif.NewBuilderTag(
+		targetIFDPath,
+		it.Id,
+		exifcommon.TypeRational,
+		exif.NewIfdBuilderTagValueFromBytes(data.Encoded),
+		rootIfd.ByteOrder(),
+	))
+	if err != nil {
+		return fmt.Errorf("failed to set value: %s", err)
+	}
 
 	// write the data back to the file
 	err = sl.SetExif(rootIb)
@@ -133,7 +218,7 @@ func SetLocalTime(image string, localTime time.Time) error {
 	return nil
 }
 
-func GetKeyString(image, key string) (string, error) {
+func GetKeyASCII(image, key string) (string, error) {
 	b, err := ioutil.ReadFile(image)
 	if err != nil {
 		return "", fmt.Errorf("failed to read image file: %w", err)
@@ -179,6 +264,58 @@ func GetKeyString(image, key string) (string, error) {
 	err = index.RootIfd.EnumerateTagsRecursively(cb)
 	if err != nil {
 		return "", fmt.Errorf("failed to walk exif data tree: %s", err)
+	}
+
+	return value, nil
+}
+
+func GetKeyRational(image, key string) ([]exifcommon.Rational, error) {
+	var value []exifcommon.Rational
+
+	b, err := ioutil.ReadFile(image)
+	if err != nil {
+		return value, fmt.Errorf("failed to read image file: %w", err)
+	}
+
+	rawExif, err := exif.SearchAndExtractExif(b)
+	if err == exif.ErrNoExif {
+		return value, fmt.Errorf("no exif data found")
+	} else if err != nil {
+		return value, fmt.Errorf("failed to get raw exif data: %s", err)
+	}
+
+	im, err := exifcommon.NewIfdMappingWithStandard()
+	if err != nil {
+		return value, fmt.Errorf("failed to create idfmapping: %s", err)
+	}
+
+	ti := exif.NewTagIndex()
+
+	_, index, err := exif.Collect(im, ti, rawExif)
+	if err != nil {
+		return value, fmt.Errorf("failed to collect exif data: %s", err)
+	}
+
+	cb := func(ifd *exif.Ifd, ite *exif.IfdTagEntry) error {
+		if ite.TagName() == key {
+			rawValue, err := ite.Value()
+			if err != nil {
+				return fmt.Errorf("could not get raw value")
+			}
+
+			var ok bool
+			value, ok = rawValue.([]exifcommon.Rational)
+			if !ok {
+				return fmt.Errorf("value was not in expected format: %#v", rawValue)
+			}
+		}
+
+		return nil
+	}
+
+	err = index.RootIfd.EnumerateTagsRecursively(cb)
+	if err != nil {
+		return value, fmt.Errorf("failed to walk exif data tree: %s", err)
 	}
 
 	return value, nil
@@ -288,4 +425,24 @@ func GetUTC(image string) (time.Time, error) {
 		dateTimeOriginalSubSec*1000000,
 		offset.Location(),
 	).UTC(), nil
+}
+
+func RationalFromDecimal(decimal float64) []exifcommon.Rational {
+	minutes := (decimal - math.Floor(decimal)) * 60
+	seconds := (minutes - math.Floor(minutes)) * 60
+
+	return []exifcommon.Rational{
+		{
+			Numerator:   uint32(math.Floor(decimal)),
+			Denominator: 1,
+		},
+		{
+			Numerator:   uint32(math.Floor(minutes)),
+			Denominator: 1,
+		},
+		{
+			Numerator:   uint32(math.Floor(seconds * 100)),
+			Denominator: 100,
+		},
+	}
 }
