@@ -35,12 +35,12 @@ func TestSetKey(t *testing.T) {
 			Image:   "./fixtures/iphone.JPG",
 			IFDPath: "IFD/GPSInfo",
 			Key:     "GPSLatitude",
-			Value:   RationalFromDecimal(51.56736389),
+			Value:   RationalDegreesMinutesSecondsFromDecimal(51.56736389),
 		},
 		//"set GPSLatitude when missing in original": {
 		//	Image: "./fixtures/x100f.jpg",
 		//	Key:   "GPSLatitude",
-		//	Value: RationalFromDecimal(51.56736389),
+		//	Value: RationalDegreesMinutesSecondsFromDecimal(51.56736389),
 		//},
 	}
 
@@ -170,7 +170,7 @@ func TestGetKey(t *testing.T) {
 	}
 }
 
-func TestRationalFromDecimal(t *testing.T) {
+func TestRationalDegreesMinutesSecondsFromDecimal(t *testing.T) {
 	testCases := map[string]struct {
 		Decimal       float64
 		ExpectedValue []exifcommon.Rational
@@ -191,11 +191,19 @@ func TestRationalFromDecimal(t *testing.T) {
 				{2424, 100},
 			},
 		},
+		"example 3": {
+			Decimal: -0.13843,
+			ExpectedValue: []exifcommon.Rational{
+				{0, 1},
+				{8, 1},
+				{1834, 100},
+			},
+		},
 	}
 
 	for name, testCase := range testCases {
 		t.Run(name, func(t *testing.T) {
-			assert.Equal(t, testCase.ExpectedValue, RationalFromDecimal(testCase.Decimal))
+			assert.Equal(t, testCase.ExpectedValue, RationalDegreesMinutesSecondsFromDecimal(testCase.Decimal))
 		})
 	}
 }

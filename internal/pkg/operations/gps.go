@@ -2,76 +2,71 @@ package operations
 
 import (
 	"fmt"
+	dectofrac "github.com/av-elier/go-decimal-to-rational"
 	"github.com/charlieegan3/gpxif/internal/pkg/exif"
 	"github.com/charlieegan3/gpxif/internal/pkg/gpx"
-	"github.com/zsefvlol/timezonemapper"
-	"time"
+	exifcommon "github.com/dsoprea/go-exif/v3/common"
 )
 
 func CheckGPSData(imageFile string, g gpx.GPXDataset) ([]Operation, error) {
 	var operations []Operation
 
-	// get the utc time for the image, if the image has an offset then this is used to calculate the utc time
-	// if no offset is set, then the time is assumed to be UTC
+	gpsLatitude, err := exif.GetKey(imageFile, "IFD/GPSInfo", "GPSLatitude")
+	if err != nil {
+		return operations, fmt.Errorf("failed to get GPSLatitude: %w", err)
+	}
+
+	// assume that the other GPS values are set
+	if gpsLatitude != nil {
+		return operations, nil
+	}
+
+	// get the UTC time of the image
 	utcTime, err := exif.GetUTC(imageFile)
 	if err != nil {
-		return operations, fmt.Errorf("failed to get UTC time for image: %s", err)
+		return operations, fmt.Errorf("failed to determine UTC time for image: %w", err)
 	}
 
-	// find the nearest point from the GPX track for that UTC time
-	p, err := g.AtTime(utcTime)
+	// find the point in the gpx dataset that matches the UTC time of the image
+	point, err := g.AtTime(utcTime)
 	if err != nil {
-		return operations, fmt.Errorf("failed to get point for time: %s\n\n", err)
+		return operations, fmt.Errorf("failed to find point at image UTC time: %w", err)
 	}
 
-	// calculate the local time for the image from the UTC time and the GPS location
-	location, err := time.LoadLocation(timezonemapper.LatLngToTimezoneString(p.Latitude, p.Longitude))
-	if err != nil {
-		return operations, fmt.Errorf("failed to parse location from GPS point: %s", err)
-	}
-	local := utcTime
-	local = local.In(location)
+	// get the values from the point in the correct format to set in EXIF
+	gpsLatitudeRational := exif.RationalDegreesMinutesSecondsFromDecimal(point.Latitude)
+	gpsLongitudeRational := exif.RationalDegreesMinutesSecondsFromDecimal(point.Longitude)
 
-	// check that the DateTimeOriginal and Offset are set to show local time
-	expectedDateTime := local.Format("2006:01:02 15:04:05")
-	expectedOffset := local.Format("-07:00")
-	expectedSubSec := fmt.Sprintf("%d", local.Nanosecond()/1000000)
-
-	currentDateTime, err := exif.GetKey(imageFile, "IFD/GPSInfo", "DateTimeOriginal")
-	if err != nil {
-		return operations, fmt.Errorf("failed to get DateTimeOriginal: %v", err)
+	var gpsLatitudeRef, gpsLongitudeRef string
+	if point.Latitude > 0 {
+		gpsLatitudeRef = "N"
+	} else {
+		gpsLatitudeRef = "S"
 	}
-	currentSubSecTime, err := exif.GetKey(imageFile, "IFD/GPSInfo", "SubSecTimeOriginal")
-	if err != nil {
-		return operations, fmt.Errorf("failed to get SubSecTimeOriginal: %v", err)
-	}
-	currentOffset, err := exif.GetKey(imageFile, "IFD/GPSInfo", "OffsetTimeOriginal")
-	if err != nil {
-		return operations, fmt.Errorf("failed to get OffsetTimeOriginal: %v", err)
+	if point.Longitude > 0 {
+		gpsLongitudeRef = "E"
+	} else {
+		gpsLongitudeRef = "W"
 	}
 
-	trigger := false
-	o := Operation{
-		Reason:  "DateTimeOriginal data was not in local time",
-		IFDPath: "IFD/Exif",
-		Fields:  map[string]string{},
-	}
-	if currentDateTime != expectedDateTime {
-		trigger = true
-		o.Fields["DateTimeOriginal"] = expectedDateTime
-	}
-	if currentOffset != expectedOffset {
-		trigger = true
-		o.Fields["OffsetTimeOriginal"] = expectedOffset
-	}
-	if currentSubSecTime != expectedSubSec {
-		trigger = true
-		o.Fields["SubSecTimeOriginal"] = expectedSubSec
+	altitude := dectofrac.NewRatP(point.Elevation.Value(), 0.0001)
+	altitudeRational := exifcommon.Rational{
+		Numerator:   uint32(altitude.Num().Int64()),
+		Denominator: uint32(altitude.Denom().Int64()),
 	}
 
-	if trigger {
-		operations = append(operations, o)
-	}
+	// set the values in the EXIF
+	operations = append(operations, Operation{
+		Reason:  "GPS data not found in EXIF",
+		IFDPath: "IFD/GPSInfo",
+		Fields: map[string]interface{}{
+			"GPSLatitude":     gpsLatitudeRational,
+			"GPSLatitudeRef":  gpsLatitudeRef,
+			"GPSLongitude":    gpsLongitudeRational,
+			"GPSLongitudeRef": gpsLongitudeRef,
+			"GPSAltitude":     altitudeRational,
+		},
+	})
 
 	return operations, nil
 }

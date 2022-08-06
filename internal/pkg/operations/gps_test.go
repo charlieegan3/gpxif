@@ -1,6 +1,8 @@
 package operations
 
 import (
+	"github.com/charlieegan3/gpxif/internal/pkg/exif"
+	exifcommon "github.com/dsoprea/go-exif/v3/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -8,7 +10,7 @@ import (
 	"github.com/charlieegan3/gpxif/internal/pkg/gpx"
 )
 
-func TTestCheckGPSData(t *testing.T) {
+func TestCheckGPSData(t *testing.T) {
 	testCases := map[string]struct {
 		Image      string
 		GPXFiles   []string
@@ -19,14 +21,14 @@ func TTestCheckGPSData(t *testing.T) {
 			GPXFiles: []string{"./fixtures/2022-08-03.gpx"},
 			Operations: []Operation{
 				{
-					Reason:  "Photo location is missing",
+					Reason:  "GPS data not found in EXIF",
 					IFDPath: "IFD/GPSInfo",
-					Fields: map[string]string{
-						"GPSLatitude":     "51/1 34/1 251/100",
+					Fields: map[string]interface{}{
+						"GPSLatitude":     exif.RationalDegreesMinutesSecondsFromDecimal(51.56734),
 						"GPSLatitudeRef":  "N",
+						"GPSLongitude":    exif.RationalDegreesMinutesSecondsFromDecimal(-0.13843),
 						"GPSLongitudeRef": "W",
-						"GPSLongitude":    "0/1 8/1 1936/100",
-						"GPSAltitude":     "75",
+						"GPSAltitude":     exifcommon.Rational{Numerator: 75, Denominator: 1},
 					},
 				},
 			},
@@ -43,7 +45,7 @@ func TTestCheckGPSData(t *testing.T) {
 			g, err := gpx.NewGPXDatasetFromFile(testCase.GPXFiles...)
 			require.NoError(t, err)
 
-			operations, err := CheckLocalTime(testCase.Image, g)
+			operations, err := CheckGPSData(testCase.Image, g)
 			require.NoError(t, err)
 
 			assert.Equal(t, testCase.Operations, operations)

@@ -54,7 +54,7 @@ func CheckLocalTime(imageFile string, g gpx.GPXDataset) ([]Operation, error) {
 	o := Operation{
 		Reason:  "DateTimeOriginal data was not in local time",
 		IFDPath: "IFD/Exif",
-		Fields:  map[string]string{},
+		Fields:  map[string]interface{}{},
 	}
 	if currentDateTime != expectedDateTime {
 		trigger = true

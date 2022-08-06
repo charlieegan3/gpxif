@@ -7,5 +7,5 @@ type Operation struct {
 	// IFDPath is the path to the IFD to operate on in the dataset
 	IFDPath string
 	// Fields is the desired state of some EXIF fields
-	Fields map[string]string
+	Fields map[string]interface{}
 }

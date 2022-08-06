@@ -21,7 +21,7 @@ func TestCheckLocalTime(t *testing.T) {
 				{
 					Reason:  "DateTimeOriginal data was not in local time",
 					IFDPath: "IFD/Exif",
-					Fields: map[string]string{
+					Fields: map[string]interface{}{
 						"DateTimeOriginal":   "2022:08:03 18:57:55",
 						"OffsetTimeOriginal": "+01:00",
 						"SubSecTimeOriginal": "0",

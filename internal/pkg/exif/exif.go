@@ -275,13 +275,15 @@ func GetUTC(image string) (time.Time, error) {
 	).UTC(), nil
 }
 
-func RationalFromDecimal(decimal float64) []exifcommon.Rational {
-	minutes := (decimal - math.Floor(decimal)) * 60
+func RationalDegreesMinutesSecondsFromDecimal(decimal float64) []exifcommon.Rational {
+	decimal = math.Abs(decimal)
+
+	minutes := math.Abs((decimal - math.Floor(decimal)) * 60)
 	seconds := (minutes - math.Floor(minutes)) * 60
 
 	return []exifcommon.Rational{
 		{
-			Numerator:   uint32(math.Floor(decimal)),
+			Numerator:   uint32(math.Abs(math.Floor(decimal))),
 			Denominator: 1,
 		},
 		{
