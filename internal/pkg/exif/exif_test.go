@@ -12,66 +12,30 @@ import (
 	"time"
 )
 
-func TestSetKeyString(t *testing.T) {
+func TestSetKey(t *testing.T) {
 	testCases := map[string]struct {
-		Image string
-		Key   string
-		Value string
+		Image   string
+		IFDPath string
+		Key     string
+		Value   any
 	}{
 		"set DateTimeOriginal": {
-			Image: "./fixtures/iphone.JPG",
-			Key:   "DateTimeOriginal",
-			Value: "2022:08:03 17:56:22",
+			Image:   "./fixtures/iphone.JPG",
+			IFDPath: "IFD/Exif",
+			Key:     "DateTimeOriginal",
+			Value:   "2022:08:03 17:56:22",
 		},
 		"set OffsetTimeOriginal when missing in original": {
-			Image: "./fixtures/x100f.jpg",
-			Key:   "OffsetTimeOriginal",
-			Value: "+01:00",
+			Image:   "./fixtures/x100f.jpg",
+			IFDPath: "IFD/Exif",
+			Key:     "OffsetTimeOriginal",
+			Value:   "+01:00",
 		},
-	}
-
-	for name, testCase := range testCases {
-		t.Run(name, func(t *testing.T) {
-			imageCopy, err := ioutil.TempFile(".", "image_")
-			require.NoError(t, err)
-			defer os.Remove(imageCopy.Name())
-
-			imageFile, err := os.Open(testCase.Image)
-			require.NoError(t, err)
-
-			_, err = io.Copy(imageCopy, imageFile)
-			require.NoError(t, err)
-
-			// test that we can mutate the same file again
-			count := 0
-			for {
-				if count > 1 {
-					break
-				}
-				count++
-
-				err = SetKeyString(imageCopy.Name(), testCase.Key, testCase.Value)
-				require.NoError(t, err)
-
-				readValue, err := GetKeyASCII(imageCopy.Name(), testCase.Key)
-				require.NoError(t, err)
-
-				assert.Equal(t, testCase.Value, readValue)
-			}
-		})
-	}
-}
-
-func TestSetKeyRational(t *testing.T) {
-	testCases := map[string]struct {
-		Image string
-		Key   string
-		Value []exifcommon.Rational
-	}{
 		"set GPSLatitude": {
-			Image: "./fixtures/iphone.JPG",
-			Key:   "GPSLatitude",
-			Value: RationalFromDecimal(51.56736389),
+			Image:   "./fixtures/iphone.JPG",
+			IFDPath: "IFD/GPSInfo",
+			Key:     "GPSLatitude",
+			Value:   RationalFromDecimal(51.56736389),
 		},
 		//"set GPSLatitude when missing in original": {
 		//	Image: "./fixtures/x100f.jpg",
@@ -99,12 +63,11 @@ func TestSetKeyRational(t *testing.T) {
 					break
 				}
 				count++
-				fmt.Println(count)
 
-				err = SetKeyRational(imageCopy.Name(), "IFD/GPSInfo", testCase.Key, testCase.Value)
+				err = SetKey(imageCopy.Name(), testCase.IFDPath, testCase.Key, testCase.Value)
 				require.NoError(t, err)
 
-				readValue, err := GetKeyRational(imageCopy.Name(), testCase.Key)
+				readValue, err := GetKey(imageCopy.Name(), testCase.IFDPath, testCase.Key)
 				require.NoError(t, err)
 
 				assert.Equal(t, testCase.Value, readValue)
@@ -146,11 +109,11 @@ func TestSetLocalTime(t *testing.T) {
 			err = SetLocalTime(imageCopy.Name(), testCase.LocalTime)
 			require.NoError(t, err)
 
-			newDateTime, err := GetKeyASCII(imageCopy.Name(), "DateTimeOriginal")
+			newDateTime, err := GetKey(imageCopy.Name(), "IFD/Exif", "DateTimeOriginal")
 			require.NoError(t, err)
-			newOffset, err := GetKeyASCII(imageCopy.Name(), "OffsetTimeOriginal")
+			newOffset, err := GetKey(imageCopy.Name(), "IFD/Exif", "OffsetTimeOriginal")
 			require.NoError(t, err)
-			newSubSecTime, err := GetKeyASCII(imageCopy.Name(), "SubSecTimeOriginal")
+			newSubSecTime, err := GetKey(imageCopy.Name(), "IFD/Exif", "SubSecTimeOriginal")
 			require.NoError(t, err)
 
 			assert.Equal(t, testCase.LocalTime.Format("2006-01-02 15:04:05"), newDateTime)
@@ -160,48 +123,35 @@ func TestSetLocalTime(t *testing.T) {
 	}
 }
 
-func TestGetKeyASCII(t *testing.T) {
+func TestGetKey(t *testing.T) {
 	testCases := map[string]struct {
 		Image         string
+		IFDPath       string
 		Key           string
-		ExpectedValue string
+		ExpectedValue interface{}
 	}{
 		"get DateTimeOriginal": {
 			Image:         "./fixtures/iphone.JPG",
+			IFDPath:       "IFD/Exif",
 			Key:           "DateTimeOriginal",
 			ExpectedValue: "2022:08:03 18:56:22",
 		},
 		"get OffsetTimeOriginal": {
 			Image:         "./fixtures/iphone.JPG",
+			IFDPath:       "IFD/Exif",
 			Key:           "OffsetTimeOriginal",
 			ExpectedValue: "+01:00",
 		},
 		"get SubsecTimeOriginal": {
 			Image:         "./fixtures/iphone.JPG",
+			IFDPath:       "IFD/Exif",
 			Key:           "SubSecTimeOriginal",
 			ExpectedValue: "480",
 		},
-	}
-
-	for name, testCase := range testCases {
-		t.Run(name, func(t *testing.T) {
-			value, err := GetKeyASCII(testCase.Image, testCase.Key)
-			require.NoError(t, err)
-
-			assert.Equal(t, testCase.ExpectedValue, value)
-		})
-	}
-}
-
-func TestGetKeyRational(t *testing.T) {
-	testCases := map[string]struct {
-		Image         string
-		Key           string
-		ExpectedValue []exifcommon.Rational
-	}{
 		"get GPSLatitude": {
-			Image: "./fixtures/iphone.JPG",
-			Key:   "GPSLatitude",
+			Image:   "./fixtures/iphone.JPG",
+			IFDPath: "IFD/GPSInfo",
+			Key:     "GPSLatitude",
 			ExpectedValue: []exifcommon.Rational{
 				{51, 1},
 				{34, 1},
@@ -212,7 +162,7 @@ func TestGetKeyRational(t *testing.T) {
 
 	for name, testCase := range testCases {
 		t.Run(name, func(t *testing.T) {
-			value, err := GetKeyRational(testCase.Image, testCase.Key)
+			value, err := GetKey(testCase.Image, testCase.IFDPath, testCase.Key)
 			require.NoError(t, err)
 
 			assert.Equal(t, testCase.ExpectedValue, value)

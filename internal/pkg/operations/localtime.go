@@ -37,17 +37,17 @@ func CheckLocalTime(imageFile string, g gpx.GPXDataset) ([]Operation, error) {
 	expectedOffset := local.Format("-07:00")
 	expectedSubSec := fmt.Sprintf("%d", local.Nanosecond()/1000000)
 
-	currentDateTime, err := exif.GetKeyASCII(imageFile, "DateTimeOriginal")
+	currentDateTime, err := exif.GetKey(imageFile, "IFD/Exif", "DateTimeOriginal")
 	if err != nil {
 		return operations, fmt.Errorf("failed to get DateTimeOriginal: %v", err)
 	}
-	currentSubSecTime, err := exif.GetKeyASCII(imageFile, "SubSecTimeOriginal")
+	currentSubSecTime, err := exif.GetKey(imageFile, "IFD/Exif", "SubSecTimeOriginal")
 	if err != nil {
-		return operations, fmt.Errorf("failed to get SubSecTimeOriginal: %v", err)
+		currentSubSecTime = ""
 	}
-	currentOffset, err := exif.GetKeyASCII(imageFile, "OffsetTimeOriginal")
+	currentOffset, err := exif.GetKey(imageFile, "IFD/Exif", "OffsetTimeOriginal")
 	if err != nil {
-		return operations, fmt.Errorf("failed to get OffsetTimeOriginal: %v", err)
+		currentOffset = ""
 	}
 
 	trigger := false

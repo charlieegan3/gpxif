@@ -82,15 +82,15 @@ var tagCmd = &cobra.Command{
 			expectedOffset := local.Format("-07:00")
 			expectedSubSec := fmt.Sprintf("%d", local.Nanosecond()/1000000)
 
-			currentDateTime, err := exif.GetKeyASCII(imageFileName, "DateTimeOriginal")
+			currentDateTime, err := exif.GetKey(imageFileName, "IFD/Exif", "DateTimeOriginal")
 			if err != nil {
 				log.Fatalf("failed to get DateTimeOriginal: %v", err)
 			}
-			currentSubSecTime, err := exif.GetKeyASCII(imageFileName, "SubSecTimeOriginal")
+			currentSubSecTime, err := exif.GetKey(imageFileName, "IFD/Exif", "SubSecTimeOriginal")
 			if err != nil {
 				log.Fatalf("failed to get SubSecTimeOriginal: %v", err)
 			}
-			currentOffset, err := exif.GetKeyASCII(imageFileName, "OffsetTimeOriginal")
+			currentOffset, err := exif.GetKey(imageFileName, "IFD/Exif", "OffsetTimeOriginal")
 			if err != nil {
 				log.Fatalf("failed to get OffsetTimeOriginal: %v", err)
 			}
