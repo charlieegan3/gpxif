@@ -48,6 +48,11 @@ var tagCmd = &cobra.Command{
 		}
 
 		for _, f := range files {
+			if !strings.HasSuffix(strings.ToLower(f.Name()), ".jpg") {
+				fmt.Println(f.Name(), "skipped")
+				continue
+			}
+
 			var ops []operations.Operation
 
 			gpsOperations, err := operations.CheckGPSData(imageSource+"/"+f.Name(), g)
@@ -58,7 +63,7 @@ var tagCmd = &cobra.Command{
 
 			timeOperations, err := operations.CheckLocalTime(imageSource+"/"+f.Name(), g)
 			if err != nil {
-				log.Fatalf("failed to determine GPS operations for %s: %s", f.Name(), err)
+				log.Fatalf("failed to determine local time operations for %s: %s", f.Name(), err)
 			}
 
 			ops = append(ops, timeOperations...)
@@ -70,7 +75,17 @@ var tagCmd = &cobra.Command{
 			fmt.Println("Updates to ", f.Name())
 
 			for _, op := range ops {
-				fmt.Println("  ", op.Reason)
+				fmt.Printf("  %s\n", op.Reason)
+				for k, v := range op.Fields {
+					fmt.Printf("    Set %q to %v\n", k, v)
+				}
+
+				if !dryRun {
+					err := op.Execute(imageSource + "/" + f.Name())
+					if err != nil {
+						log.Fatalf("failed operation: %s", err)
+					}
+				}
 			}
 		}
 	},

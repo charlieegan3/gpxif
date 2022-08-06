@@ -6,13 +6,14 @@ import (
 	"github.com/charlieegan3/gpxif/internal/pkg/exif"
 	"github.com/charlieegan3/gpxif/internal/pkg/gpx"
 	exifcommon "github.com/dsoprea/go-exif/v3/common"
+	"strings"
 )
 
 func CheckGPSData(imageFile string, g gpx.GPXDataset) ([]Operation, error) {
 	var operations []Operation
 
 	gpsLatitude, err := exif.GetKey(imageFile, "IFD/GPSInfo", "GPSLatitude")
-	if err != nil {
+	if err != nil && !strings.Contains(err.Error(), "tag not found") {
 		return operations, fmt.Errorf("failed to get GPSLatitude: %w", err)
 	}
 
@@ -50,9 +51,11 @@ func CheckGPSData(imageFile string, g gpx.GPXDataset) ([]Operation, error) {
 	}
 
 	altitude := dectofrac.NewRatP(point.Elevation.Value(), 0.0001)
-	altitudeRational := exifcommon.Rational{
-		Numerator:   uint32(altitude.Num().Int64()),
-		Denominator: uint32(altitude.Denom().Int64()),
+	altitudeRational := []exifcommon.Rational{
+		{
+			Numerator:   uint32(altitude.Num().Int64()),
+			Denominator: uint32(altitude.Denom().Int64()),
+		},
 	}
 
 	// set the values in the EXIF

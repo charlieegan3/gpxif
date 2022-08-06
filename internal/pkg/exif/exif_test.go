@@ -37,11 +37,12 @@ func TestSetKey(t *testing.T) {
 			Key:     "GPSLatitude",
 			Value:   RationalDegreesMinutesSecondsFromDecimal(51.56736389),
 		},
-		//"set GPSLatitude when missing in original": {
-		//	Image: "./fixtures/x100f.jpg",
-		//	Key:   "GPSLatitude",
-		//	Value: RationalDegreesMinutesSecondsFromDecimal(51.56736389),
-		//},
+		"set GPSLatitude when missing in original": {
+			Image:   "./fixtures/x100f.jpg",
+			IFDPath: "IFD/GPSInfo",
+			Key:     "GPSLatitude",
+			Value:   RationalDegreesMinutesSecondsFromDecimal(51.56736389),
+		},
 	}
 
 	for name, testCase := range testCases {
