@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func CheckLocalTime(imageFile string, g gpx.GPXDataset) ([]Operation, error) {
+func CheckLocalTime(imageFile string, g *gpx.GPXDataset) ([]Operation, error) {
 	var operations []Operation
 
 	// get the utc time for the image, if the image has an offset then this is used to calculate the utc time

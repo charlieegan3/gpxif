@@ -41,7 +41,7 @@ func TestCheckLocalTime(t *testing.T) {
 			g, err := gpx.NewGPXDatasetFromFile(testCase.GPXFiles...)
 			require.NoError(t, err)
 
-			operations, err := CheckLocalTime(testCase.Image, g)
+			operations, err := CheckLocalTime(testCase.Image, &g)
 			require.NoError(t, err)
 
 			assert.Equal(t, testCase.Operations, operations)

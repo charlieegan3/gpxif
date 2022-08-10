@@ -2,6 +2,9 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/charlieegan3/gpxif/internal/pkg/config"
+	"github.com/charlieegan3/gpxif/internal/pkg/gpxfetch"
+	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"io/ioutil"
 	"log"
@@ -27,24 +30,53 @@ var tagCmd = &cobra.Command{
 		}
 		imageSource = strings.TrimSuffix(imageSource, "/")
 
-		gpxSource, err := cmd.Flags().GetString("gpx")
+		autoSource, err := cmd.Flags().GetBool("auto")
 		if err != nil {
-			log.Fatalf("Failed to get gpxSource flag: %s", err)
+			log.Fatalf("Failed to get auto flag: %s", err)
+		}
+
+		var g *gpx.GPXDataset
+
+		if autoSource {
+			path, err := homedir.Expand("~/.gpxif")
+			if err != nil {
+				log.Fatalf("error expanding homedir: %v", err)
+			}
+
+			cfg, err := config.Load(path)
+			if err != nil {
+				log.Fatalf("failed to load config: %s", err)
+			}
+
+			fmt.Println("Auto sourcing GPX data")
+			fmt.Println("GPX Source:", cfg.GPXSource.URLTemplate)
+			fmt.Println("GPX Source Username:", cfg.GPXSource.Username)
+
+			autoDs, err := gpxfetch.ForImages(cfg, imageSource)
+			if err != nil {
+				log.Fatalf("failed to auto source gpx data: %s", err)
+			}
+			g = &autoDs
+		} else {
+			gpxSource, err := cmd.Flags().GetString("gpx")
+			if err != nil {
+				log.Fatalf("Failed to get gpxSource flag: %s", err)
+			}
+
+			fileDs, err := gpx.NewGPXDatasetFromFile(gpxSource)
+			if err != nil {
+				log.Fatalf("Failed to create GPX dataset: %s", err)
+			}
+			g = &fileDs
 		}
 
 		fmt.Println("Dry Run: ", dryRun)
 		fmt.Println("Image Source: ", imageSource)
-		fmt.Println("GPX Source: ", gpxSource)
 		fmt.Println("---")
 
 		files, err := ioutil.ReadDir(imageSource)
 		if err != nil {
 			log.Fatalf("Failed to list files in images directory: %s", err)
-		}
-
-		g, err := gpx.NewGPXDatasetFromFile(gpxSource)
-		if err != nil {
-			log.Fatalf("Failed to create GPX dataset: %s", err)
 		}
 
 		for _, f := range files {
@@ -99,6 +131,11 @@ func init() {
 		false,
 		"Don't update images, just print what would be done",
 	)
+	tagCmd.Flags().Bool(
+		"auto",
+		true,
+		"Automatically determine the GPX data based on image timestamps",
+	)
 	tagCmd.Flags().StringP(
 		"images",
 		"i",
@@ -114,9 +151,5 @@ func init() {
 	err := tagCmd.MarkFlagRequired("images")
 	if err != nil {
 		log.Fatalf("Failed to mark images flag required: %s", err)
-	}
-	err = tagCmd.MarkFlagRequired("gpx")
-	if err != nil {
-		log.Fatalf("Failed to mark gpx flag required: %s", err)
 	}
 }

@@ -45,7 +45,7 @@ func TestCheckGPSData(t *testing.T) {
 			g, err := gpx.NewGPXDatasetFromFile(testCase.GPXFiles...)
 			require.NoError(t, err)
 
-			operations, err := CheckGPSData(testCase.Image, g)
+			operations, err := CheckGPSData(testCase.Image, &g)
 			require.NoError(t, err)
 
 			assert.Equal(t, testCase.Operations, operations)

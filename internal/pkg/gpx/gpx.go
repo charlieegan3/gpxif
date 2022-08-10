@@ -3,6 +3,7 @@ package gpx
 import (
 	"fmt"
 	"github.com/tkrajina/gpxgo/gpx"
+	"io"
 	"sort"
 	"time"
 )
@@ -91,6 +92,24 @@ func NewGPXDatasetFromFile(files ...string) (GPXDataset, error) {
 
 		ds.data = append(ds.data, data)
 	}
+
+	return ds, nil
+}
+
+func NewGPXDatasetFromReader(reader io.Reader) (GPXDataset, error) {
+	ds := GPXDataset{}
+
+	b, err := io.ReadAll(reader)
+	if err != nil {
+		return GPXDataset{}, fmt.Errorf("failed to data from reader: %w", err)
+	}
+
+	rawData, err := gpx.ParseBytes(b)
+	if err != nil {
+		return GPXDataset{}, fmt.Errorf("failed to parse gpx data from file: %w", err)
+	}
+
+	ds.data = append(ds.data, rawData)
 
 	return ds, nil
 }

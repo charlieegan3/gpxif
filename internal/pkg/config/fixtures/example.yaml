@@ -1,0 +1,4 @@
+gpx_source:
+  url_template: "https://example.com/gpx?from={{ .From }}&to={{ .To }}"
+  username: example
+  password: password

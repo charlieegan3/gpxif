@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-func CheckGPSData(imageFile string, g gpx.GPXDataset) ([]Operation, error) {
+func CheckGPSData(imageFile string, g *gpx.GPXDataset) ([]Operation, error) {
 	var operations []Operation
 
 	gpsLatitude, err := exif.GetKey(imageFile, "IFD/GPSInfo", "GPSLatitude")

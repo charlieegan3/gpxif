@@ -1,14 +1,63 @@
 package gpx
 
 import (
-	"github.com/stretchr/testify/assert"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/maxatome/go-testdeep/td"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tkrajina/gpxgo/gpx"
 )
+
+func TestNewGPXDatasetFromReader(t *testing.T) {
+	testCases := map[string]struct {
+		File                   string
+		ExpectedFirstPointTime time.Time
+		ExpectedFirstPoint     gpx.Point
+		ExpectedLastPointTime  time.Time
+		ExpectedLastPoint      gpx.Point
+		ExpectPointCount       int
+	}{
+		"simple example": {
+			File:                   "fixtures/run.gpx",
+			ExpectedFirstPointTime: time.Date(2022, time.August, 3, 8, 10, 0, 0, time.UTC),
+			ExpectedFirstPoint: gpx.Point{
+				Latitude:  51.5671980,
+				Longitude: -0.1413280,
+				Elevation: *gpx.NewNullableFloat64(90.2),
+			},
+			ExpectedLastPointTime: time.Date(2022, time.August, 3, 8, 10, 0, 0, time.UTC),
+			ExpectedLastPoint: gpx.Point{
+				Latitude:  51.5671980,
+				Longitude: -0.1413280,
+				Elevation: *gpx.NewNullableFloat64(90.2),
+			},
+			ExpectPointCount: 10,
+		},
+	}
+
+	for name, testCase := range testCases {
+		t.Run(name, func(t *testing.T) {
+			file, err := os.Open(testCase.File)
+			require.NoError(t, err)
+
+			gpxDataset, err := NewGPXDatasetFromReader(file)
+			require.NoError(t, err)
+
+			firstPoint, err := gpxDataset.AtTime(testCase.ExpectedFirstPointTime)
+			require.NoError(t, err)
+
+			lastPoint, err := gpxDataset.AtTime(testCase.ExpectedLastPointTime)
+			require.NoError(t, err)
+
+			assert.Equal(t, testCase.ExpectedFirstPoint, firstPoint.Point)
+			assert.Equal(t, testCase.ExpectedLastPoint, lastPoint.Point)
+
+		})
+	}
+}
 
 func TestInRange(t *testing.T) {
 	testCases := map[string]struct {
