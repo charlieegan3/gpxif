@@ -28,7 +28,7 @@ func TestCheckGPSData(t *testing.T) {
 						"GPSLatitudeRef":  "N",
 						"GPSLongitude":    exif.RationalDegreesMinutesSecondsFromDecimal(-0.13843),
 						"GPSLongitudeRef": "W",
-						"GPSAltitude":     exifcommon.Rational{Numerator: 75, Denominator: 1},
+						"GPSAltitude":     []exifcommon.Rational{{Numerator: 75, Denominator: 1}},
 					},
 				},
 			},

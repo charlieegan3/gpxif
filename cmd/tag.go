@@ -111,12 +111,6 @@ func init() {
 		"",
 		"GPX file containing timestamps",
 	)
-	tagCmd.Flags().StringP(
-		"diff",
-		"d",
-		"5m",
-		"Maximum permitted diff between GPS point and image UTC times",
-	)
 	err := tagCmd.MarkFlagRequired("images")
 	if err != nil {
 		log.Fatalf("Failed to mark images flag required: %s", err)

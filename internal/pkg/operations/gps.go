@@ -17,8 +17,9 @@ func CheckGPSData(imageFile string, g gpx.GPXDataset) ([]Operation, error) {
 		return operations, fmt.Errorf("failed to get GPSLatitude: %w", err)
 	}
 
-	// assume that the other GPS values are set
-	if gpsLatitude != nil {
+	// assume that the other GPS values are set if latitude is present
+	value, _ := gpsLatitude.([]exifcommon.Rational)
+	if gpsLatitude != nil && len(value) == 3 {
 		return operations, nil
 	}
 
