@@ -87,10 +87,9 @@ func TestInRange(t *testing.T) {
 			gpxDataset, err := NewGPXDatasetFromFile(testCase.Files...)
 			require.NoError(t, err)
 
-			result := gpxDataset.InRange(testCase.Time)
+			result, _ := gpxDataset.InRange(testCase.Time)
 
 			assert.Equal(t, testCase.ExpectedResult, result)
-
 		})
 	}
 }
@@ -110,9 +109,17 @@ func TestAtTime(t *testing.T) {
 				Timestamp: time.Date(2022, time.August, 3, 8, 9, 57, 0, time.UTC),
 			},
 		},
-		"run example with no match": {
+		"run example with no match returns last/first point": {
+			File: "fixtures/run.gpx",
+			Time: time.Date(2022, time.August, 3, 8, 53, 0, 0, time.UTC),
+			ExpectedPoint: &gpx.GPXPoint{
+				Point:     gpx.Point{Latitude: 51.5673220, Longitude: -0.1383400},
+				Timestamp: time.Date(2022, time.August, 3, 8, 52, 9, 0, time.UTC),
+			},
+		},
+		"run example with no match and +24h offset returns error": {
 			File:          "fixtures/run.gpx",
-			Time:          time.Date(2021, time.August, 3, 8, 10, 0, 0, time.UTC),
+			Time:          time.Date(2022, time.August, 4, 8, 53, 0, 0, time.UTC),
 			ExpectedError: strPtr("out of range of loaded files"),
 		},
 	}

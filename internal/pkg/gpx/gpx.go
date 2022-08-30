@@ -12,12 +12,9 @@ type GPXDataset struct {
 	data []*gpx.GPX
 }
 
-func (g *GPXDataset) InRange(t time.Time) bool {
-	if len(g.data) < 1 {
-		return false
-	}
-
+func (g *GPXDataset) AllPoints() []gpx.GPXPoint {
 	var allPoints []gpx.GPXPoint
+
 	for _, d := range g.data {
 		for _, track := range d.Tracks {
 			for _, segment := range track.Segments {
@@ -28,22 +25,55 @@ func (g *GPXDataset) InRange(t time.Time) bool {
 		}
 	}
 
-	if len(allPoints) < 1 {
-		return false
-	}
-
 	sort.Slice(allPoints, func(i, j int) bool { return allPoints[i].Timestamp.Before(allPoints[j].Timestamp) })
 
-	if t.Before(allPoints[0].Timestamp) || t.After(allPoints[len(allPoints)-1].Timestamp) {
-		return false
-	}
-
-	return true
+	return allPoints
 }
 
+// InRange returns true if the given time is within the range of the loaded GPX data.
+// The second return value is whether the time is before or after the range
+func (g *GPXDataset) InRange(t time.Time) (bool, bool) {
+	if len(g.data) < 1 {
+		return false, false
+	}
+
+	allPoints := g.AllPoints()
+
+	if len(allPoints) < 1 {
+		return false, false
+	}
+
+	if t.Before(allPoints[0].Timestamp) {
+		return false, true
+	}
+	if t.After(allPoints[len(allPoints)-1].Timestamp) {
+		return false, false
+	}
+
+	return true, false
+}
+
+// AtTime returns the closest point for a given time.
+// If the time is not in the range of the points, then the first or last point is used.
+// However, the offset of such matches are limited to 24hrs.
 func (g *GPXDataset) AtTime(t time.Time) (gpx.GPXPoint, error) {
-	if !g.InRange(t) {
-		return gpx.GPXPoint{}, fmt.Errorf("time %s was out of range of loaded files", t)
+	inRange, before := g.InRange(t)
+	if !inRange {
+		allPoints := g.AllPoints()
+		if before {
+			candidatePoint := allPoints[0]
+			if candidatePoint.Timestamp.Sub(t) < 24*time.Hour {
+				return candidatePoint, nil
+			}
+
+			return gpx.GPXPoint{}, fmt.Errorf("out of range of loaded files: %v", t)
+		} else {
+			candidatePoint := allPoints[len(allPoints)-1]
+			if t.Sub(candidatePoint.Timestamp) < 24*time.Hour {
+				return candidatePoint, nil
+			}
+			return gpx.GPXPoint{}, fmt.Errorf("out of range of loaded files: %v", t)
+		}
 	}
 
 	var closestPoint gpx.GPXPoint
