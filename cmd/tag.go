@@ -97,8 +97,14 @@ var tagCmd = &cobra.Command{
 			if err != nil {
 				log.Fatalf("failed to determine local time operations for %s: %s", f.Name(), err)
 			}
-
 			ops = append(ops, timeOperations...)
+
+			// TODO: these need to be last since they depend on data set in other operations
+			modTimeOperations, err := operations.CheckModTime(imageSource + "/" + f.Name())
+			if err != nil {
+				log.Fatalf("failed to determine mtime operations for %s: %s", f.Name(), err)
+			}
+			ops = append(ops, modTimeOperations...)
 
 			if len(ops) == 0 {
 				continue
@@ -133,7 +139,7 @@ func init() {
 	)
 	tagCmd.Flags().Bool(
 		"auto",
-		true,
+		false,
 		"Automatically determine the GPX data based on image timestamps",
 	)
 	tagCmd.Flags().StringP(

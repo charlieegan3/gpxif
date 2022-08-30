@@ -2,6 +2,7 @@ package operations
 
 import (
 	"github.com/charlieegan3/gpxif/internal/pkg/exif"
+	"github.com/djherbis/times"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -29,6 +30,15 @@ func TestOperationExecute(t *testing.T) {
 				},
 			},
 		},
+		"example to update mtime": {
+			Image: "../exif/fixtures/x100f.jpg",
+			Operations: []Operation{
+				{
+					Reason:  "mtime needs to be updated",
+					ModTime: true,
+				},
+			},
+		},
 	}
 
 	for name, testCase := range testCases {
@@ -47,10 +57,20 @@ func TestOperationExecute(t *testing.T) {
 				err := op.Execute(imageCopy.Name())
 				require.NoError(t, err)
 
-				for k, v := range op.Fields {
-					value, err := exif.GetKey(imageCopy.Name(), op.IFDPath, k)
+				if op.ModTime {
+					originalTime, err := exif.GetUTC(imageCopy.Name())
 					require.NoError(t, err)
-					assert.Equal(t, v, value)
+
+					mtime, err := times.Stat(imageCopy.Name())
+					require.NoError(t, err)
+
+					assert.Equal(t, mtime.ModTime().UTC(), originalTime)
+				} else {
+					for k, v := range op.Fields {
+						value, err := exif.GetKey(imageCopy.Name(), op.IFDPath, k)
+						require.NoError(t, err)
+						assert.Equal(t, v, value)
+					}
 				}
 			}
 		})
