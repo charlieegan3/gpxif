@@ -110,7 +110,7 @@ var tagCmd = &cobra.Command{
 				continue
 			}
 
-			fmt.Println("Updates to ", f.Name())
+			fmt.Println("Updates to", f.Name())
 
 			for _, op := range ops {
 				fmt.Printf("  %s\n", op.Reason)
