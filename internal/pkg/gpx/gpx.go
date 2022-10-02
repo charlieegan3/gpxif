@@ -60,6 +60,9 @@ func (g *GPXDataset) AtTime(t time.Time) (gpx.GPXPoint, error) {
 	inRange, before := g.InRange(t)
 	if !inRange {
 		allPoints := g.AllPoints()
+		if len(allPoints) == 0 {
+			return gpx.GPXPoint{}, fmt.Errorf("no points in dataset")
+		}
 		if before {
 			candidatePoint := allPoints[0]
 			if candidatePoint.Timestamp.Sub(t) < 24*time.Hour {
