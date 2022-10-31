@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"github.com/tkrajina/gpxgo/gpx"
 	"io"
+	"os"
+	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -114,7 +117,36 @@ func (g *GPXDataset) AtTime(t time.Time) (gpx.GPXPoint, error) {
 	return closestPoint, nil
 }
 
-func NewGPXDatasetFromFile(files ...string) (GPXDataset, error) {
+func NewGPXDatasetFromDisk(paths ...string) (GPXDataset, error) {
+	var files []string
+	for _, path := range paths {
+		file, err := os.Open(path)
+		if err != nil {
+			return GPXDataset{}, fmt.Errorf("failed to open %s: %w", path, err)
+		}
+		defer file.Close()
+
+		fileInfo, err := file.Stat()
+		if err != nil {
+			return GPXDataset{}, fmt.Errorf("failed to stat %s: %w", path, err)
+		}
+
+		if fileInfo.IsDir() {
+			dirFiles, err := os.ReadDir(path)
+			if err != nil {
+				return GPXDataset{}, fmt.Errorf("failed to read dir %s: %w", path, err)
+			}
+			for _, f := range dirFiles {
+				if f.IsDir() || !strings.HasSuffix(f.Name(), ".gpx") {
+					continue
+				}
+				files = append(files, filepath.Join(path, f.Name()))
+			}
+		} else {
+			files = append(files, path)
+		}
+	}
+
 	ds := GPXDataset{}
 
 	for _, f := range files {

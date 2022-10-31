@@ -42,7 +42,7 @@ func TestCheckGPSData(t *testing.T) {
 
 	for name, testCase := range testCases {
 		t.Run(name, func(t *testing.T) {
-			g, err := gpx.NewGPXDatasetFromFile(testCase.GPXFiles...)
+			g, err := gpx.NewGPXDatasetFromDisk(testCase.GPXFiles...)
 			require.NoError(t, err)
 
 			operations, err := CheckGPSData(testCase.Image, &g)

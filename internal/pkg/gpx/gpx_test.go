@@ -84,7 +84,7 @@ func TestInRange(t *testing.T) {
 
 	for name, testCase := range testCases {
 		t.Run(name, func(t *testing.T) {
-			gpxDataset, err := NewGPXDatasetFromFile(testCase.Files...)
+			gpxDataset, err := NewGPXDatasetFromDisk(testCase.Files...)
 			require.NoError(t, err)
 
 			result, _ := gpxDataset.InRange(testCase.Time)
@@ -126,7 +126,7 @@ func TestAtTime(t *testing.T) {
 
 	for name, testCase := range testCases {
 		t.Run(name, func(t *testing.T) {
-			gpxDataset, err := NewGPXDatasetFromFile(testCase.File)
+			gpxDataset, err := NewGPXDatasetFromDisk(testCase.File)
 			require.NoError(t, err)
 
 			point, err := gpxDataset.AtTime(testCase.Time)

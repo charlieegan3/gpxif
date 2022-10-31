@@ -63,7 +63,7 @@ var tagCmd = &cobra.Command{
 				log.Fatalf("Failed to get gpxSource flag: %s", err)
 			}
 
-			fileDs, err := gpx.NewGPXDatasetFromFile(gpxSource)
+			fileDs, err := gpx.NewGPXDatasetFromDisk(gpxSource)
 			if err != nil {
 				log.Fatalf("Failed to create GPX dataset: %s", err)
 			}
