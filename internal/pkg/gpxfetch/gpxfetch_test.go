@@ -48,7 +48,7 @@ func TestForImages(t *testing.T) {
 
 		from := r.URL.Query().Get("from")
 		to := r.URL.Query().Get("to")
-		if from != "2022-01-21" || to != "2022-08-03" {
+		if from != "2022-01-21" || to != "2022-11-20" {
 			t.Fatalf("unexpected query params: from=%s, to=%s", from, to)
 		}
 
@@ -80,7 +80,7 @@ func TestDetermineRange(t *testing.T) {
 		"check exif fixture dir": {
 			SourceDir:     "../exif/fixtures",
 			ExpectedStart: time.Date(2022, time.January, 21, 9, 9, 0, 97000000, time.UTC),
-			ExpectedEnd:   time.Date(2022, time.August, 3, 17, 57, 55, 0, time.UTC),
+			ExpectedEnd:   time.Date(2022, time.November, 20, 12, 24, 26, 210000000, time.UTC),
 		},
 	}
 

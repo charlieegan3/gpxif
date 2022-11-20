@@ -143,6 +143,12 @@ func TestGetKey(t *testing.T) {
 			Key:           "OffsetTimeOriginal",
 			ExpectedValue: "+01:00",
 		},
+		"get OffsetTimeOriginal when just Z character": {
+			Image:         "./fixtures/offset-time-z.JPG",
+			IFDPath:       "IFD/Exif",
+			Key:           "OffsetTimeOriginal",
+			ExpectedValue: "Z",
+		},
 		"get SubsecTimeOriginal": {
 			Image:         "./fixtures/iphone.JPG",
 			IFDPath:       "IFD/Exif",

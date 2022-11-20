@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	exif "github.com/dsoprea/go-exif/v3"
+	"github.com/dsoprea/go-exif/v3"
 	exifcommon "github.com/dsoprea/go-exif/v3/common"
 )
 
@@ -245,6 +245,10 @@ func GetUTC(image string) (time.Time, error) {
 			}
 
 			val = strings.Replace(val, ":", "", 1)
+			// special case for no offset
+			if val == "Z" {
+				val = "+0000"
+			}
 			if len(val) != 5 {
 				return fmt.Errorf("OffsetTimeOriginal was not of the expected length: %#v", rawValue)
 			}
