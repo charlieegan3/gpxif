@@ -49,7 +49,7 @@
           src = ./.;
           modules = ./gomod2nix.toml;
           checkPhase = ''
-            go test -run '^TestCheckModTime' -v ./...
+            NIX_BUILD=true go test -v ./...
           '';
         };
 

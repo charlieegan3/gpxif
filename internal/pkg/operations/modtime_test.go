@@ -1,12 +1,18 @@
 package operations
 
 import (
+	"os"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestCheckModTime(t *testing.T) {
+	if os.Getenv("NIX_BUILD") == "true" {
+		t.Skip()
+	}
+
 	testCases := map[string]struct {
 		Image      string
 		Operations []Operation
