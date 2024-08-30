@@ -7,13 +7,13 @@ import (
 	"io/ioutil"
 	"net/http"
 	"sort"
-	"strings"
 	"text/template"
 	"time"
 
 	"github.com/charlieegan3/gpxif/internal/pkg/config"
 	"github.com/charlieegan3/gpxif/internal/pkg/exif"
 	"github.com/charlieegan3/gpxif/internal/pkg/gpx"
+	"github.com/charlieegan3/gpxif/internal/pkg/utils"
 )
 
 func ForImages(cfg config.Config, sourceDir string) (gpx.GPXDataset, error) {
@@ -41,14 +41,12 @@ func ForImages(cfg config.Config, sourceDir string) (gpx.GPXDataset, error) {
 	req, err := http.NewRequest("GET", buf.String(), nil)
 	if err != nil {
 		return gpxDataset, fmt.Errorf("failed to create request to source GPX data: %w", err)
-
 	}
 	req.SetBasicAuth(cfg.GPXSource.Username, cfg.GPXSource.Password)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return gpxDataset, fmt.Errorf("failed to get GPX data: %w", err)
-
 	}
 	defer resp.Body.Close()
 
@@ -77,7 +75,7 @@ func determineTimeRange(sourceDir string) (time.Time, time.Time, error) {
 
 	var utcTimes []time.Time
 	for _, f := range files {
-		if !strings.HasSuffix(strings.ToLower(f.Name()), ".jpg") {
+		if !utils.IsJPEGFile(f.Name()) {
 			continue
 		}
 

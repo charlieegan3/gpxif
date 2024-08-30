@@ -2,13 +2,15 @@ package cmd
 
 import (
 	"fmt"
+	"log"
+	"os"
+	"strings"
+
 	"github.com/charlieegan3/gpxif/internal/pkg/config"
 	"github.com/charlieegan3/gpxif/internal/pkg/gpxfetch"
+	"github.com/charlieegan3/gpxif/internal/pkg/utils"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
-	"io/ioutil"
-	"log"
-	"strings"
 
 	"github.com/charlieegan3/gpxif/internal/pkg/gpx"
 	"github.com/charlieegan3/gpxif/internal/pkg/operations"
@@ -74,13 +76,13 @@ var tagCmd = &cobra.Command{
 		fmt.Println("Image Source: ", imageSource)
 		fmt.Println("---")
 
-		files, err := ioutil.ReadDir(imageSource)
+		files, err := os.ReadDir(imageSource)
 		if err != nil {
 			log.Fatalf("Failed to list files in images directory: %s", err)
 		}
 
 		for _, f := range files {
-			if !strings.HasSuffix(strings.ToLower(f.Name()), ".jpg") {
+			if !utils.IsJPEGFile(f.Name()) {
 				fmt.Println(f.Name(), "skipped")
 				continue
 			}
