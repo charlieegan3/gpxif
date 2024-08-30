@@ -20,13 +20,21 @@
       repo = "flake-utils";
       rev = "b1d9ab70662946ef0850d488da1c9019f3a9752a";
     };
+    pre-commit-hooks = {
+      type = "github";
+      owner = "cachix";
+      repo = "git-hooks.nix";
+      rev = "c7012d0c18567c889b948781bc74a501e92275d1";
+    };
   };
 
   outputs =
     {
+      self,
       nixpkgs,
       flake-utils,
       gomod2nix,
+      pre-commit-hooks,
       ...
     }:
     let
@@ -42,6 +50,25 @@
 
       in
       {
+        checks = {
+          pre-commit-check = pre-commit-hooks.lib.${system}.run {
+            src = ./.;
+            hooks = {
+              dprint = {
+                enable = true;
+                name = "dprint check";
+                entry = "dprint check --allow-no-files";
+              };
+              nixfmt = {
+                enable = true;
+                name = "nixfmt check";
+                entry = "nixfmt -c ";
+                types = [ "nix" ];
+              };
+            };
+          };
+        };
+
         packages.default = buildGoApplication {
           pname = "gpxif";
           version = "0.1";
@@ -55,11 +82,17 @@
 
         devShells = {
           default = pkgs.mkShell {
+            inherit (self.checks.${system}.pre-commit-check) shellHook;
+            buildInputs = self.checks.${system}.pre-commit-check.enabledPackages;
+
             packages = with pkgs; [
               go_1_22
               golangci-lint
               gomod2nix.packages.${system}.default
               goEnv
+
+              dprint
+              nixfmt-rfc-style
             ];
           };
         };
