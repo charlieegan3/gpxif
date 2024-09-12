@@ -47,7 +47,6 @@
         mkGoEnv = gomod2nix.legacyPackages.${system}.mkGoEnv;
         goEnv = mkGoEnv { pwd = ./.; };
         buildGoApplication = gomod2nix.legacyPackages.${system}.buildGoApplication;
-
       in
       {
         checks = {
@@ -64,6 +63,13 @@
                 name = "nixfmt check";
                 entry = "nixfmt -c ";
                 types = [ "nix" ];
+              };
+              gomod2nix = {
+                enable = true;
+                name = "gomod2nix up to date";
+                entry = "just gomod2nix";
+                pass_filenames = false;
+                files = "^(go\\.mod|go\\.sum|gomod2nix\\.toml)$";
               };
             };
           };
